@@ -1,0 +1,23 @@
+[project]
+name = "google-ads-mcp"
+version = "0.0.1"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+dependencies = [
+    "google-ads>=28.0.0",
+    "mcp[cli]>=1.2.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "nox >=2025.5.1, <2026"
+]
+
+[project.urls]
+homepage = "https://github.com/googleads/google-ads-mcp"
+repository = "https://github.com/googleads/google-ads-mcp.git"
+issues = "https://github.com/googleads/google-ads-mcp/issues"
+
+[project.scripts]
+analytics-mcp = "analytics_mcp.server:run_server"
