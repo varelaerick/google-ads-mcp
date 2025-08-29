@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Tools for exposing simple, core API methods to the MCP server."""
+
 from typing import Any, Dict, List
 from ads_mcp.coordinator import mcp
 import ads_mcp.utils as utils
@@ -21,13 +23,14 @@ from google.ads.googleads.v21.services.types.customer_service import (
 )
 
 
-
 @mcp.tool()
 def list_accessible_customers() -> List[str]:
+    """Returns ids of customers directly accessible by the user authenticating the call."""
     ga_service = utils.googleads_client.get_service("CustomerService")
     accessible_customers: ListAccessibleCustomersResponse = (
         ga_service.list_accessible_customers()
     )
-    
-    return  accessible_customers.resource_names    
-
+    # remove customer/ from the start of each resource
+    return [
+        cust_rn.split("/")[1] for cust_rn in accessible_customers.resource_names
+    ]

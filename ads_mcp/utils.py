@@ -22,37 +22,62 @@ import logging
 from google.ads.googleads.client import GoogleAdsClient
 from google.protobuf.json_format import MessageToDict
 from google.ads.googleads.v21.services.services.google_ads_service import (
-    GoogleAdsServiceClient
-)
-from google.ads.googleads.v21.services.types.google_ads_service import (
-    GoogleAdsRow
+    GoogleAdsServiceClient,
 )
 
 from google.ads.googleads.util import get_nested_attr
+import google.auth
+import os
 
 GAQL_FILEPATH = "ads_mcp/gaql_resources.txt"
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO) 
+logging.basicConfig(level=logging.INFO)
+
+# Read-only scope for Analytics Admin API and Analytics Data API.
+_READ_ONLY_ADS_SCOPE = "https://www.googleapis.com/auth/adwords"
+
+
+def _create_credentials() -> google.auth.credentials.Credentials:
+    """Returns Application Default Credentials with read-only scope."""
+    (credentials, _) = google.auth.default(scopes=[_READ_ONLY_ADS_SCOPE])
+    return credentials
+
+
+def _get_developer_token() -> str:
+    """Returns the developer token from the environment variable GOOGLE_ADS_DEVELOPER_TOKEN."""
+    dev_token = os.environ.get("GOOGLE_ADS_DEVELOPER_TOKEN")
+    if dev_token is None:
+        raise ValueError(
+            "GOOGLE_ADS_DEVELOPER_TOKEN environment variable not set."
+        )
+    return dev_token
 
 
 def get_googleads_client() -> GoogleAdsClient:
-    client = GoogleAdsClient.load_from_storage(version="v21")
-    #add somethink to headers to record and add support for MCP efforts
+    # Use this line if you have a google-ads.yaml file
+    # client = GoogleAdsClient.load_from_storage()
+    client = GoogleAdsClient(
+        credentials=_create_credentials(),
+        developer_token=_get_developer_token(),
+    )
+
+    # add somethink to headers to record and add support for MCP efforts
     return client
+
 
 googleads_client = get_googleads_client()
 
 
-def format_output_value(value: Any) -> Any :
-    if isinstance(value, proto.Enum):  
+def format_output_value(value: Any) -> Any:
+    if isinstance(value, proto.Enum):
         return value.name
     else:
         return value
-    
-def format_output_row(row:proto.Message, attributes):        
-    #Switch back to this if we decide to use campaign.status vs status for field names
-    return {attr:format_output_value(get_nested_attr(row, attr)) for attr in attributes}    
-    #Switch to this to just see status - this seems to be confusing the LLM
-    #return MessageToDict(row._pb, preserving_proto_field_name=True)
-    
+
+
+def format_output_row(row: proto.Message, attributes):
+    return {
+        attr: format_output_value(get_nested_attr(row, attr))
+        for attr in attributes
+    }
