@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC All Rights Reserved.
+# Copyright 2025 Google LLC.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,8 +14,9 @@
 
 """Tools for exposing simple, core API methods to the MCP server."""
 
-from typing import Any, Dict, List
+from typing import List
 from ads_mcp.coordinator import mcp
+
 import ads_mcp.utils as utils
 
 from google.ads.googleads.v21.services.types.customer_service import (
@@ -26,11 +27,12 @@ from google.ads.googleads.v21.services.types.customer_service import (
 @mcp.tool()
 def list_accessible_customers() -> List[str]:
     """Returns ids of customers directly accessible by the user authenticating the call."""
-    ga_service = utils.googleads_client.get_service("CustomerService")
+    ga_service = utils.get_googleads_service("CustomerService")
     accessible_customers: ListAccessibleCustomersResponse = (
         ga_service.list_accessible_customers()
     )
     # remove customer/ from the start of each resource
     return [
-        cust_rn.split("/")[1] for cust_rn in accessible_customers.resource_names
+        cust_rn.removeprefix("customers/")
+        for cust_rn in accessible_customers.resource_names
     ]

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2025 Google LLC All Rights Reserved.
+# Copyright 2025 Google LLC.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,17 +16,17 @@
 
 """Common utilities used by the MCP server."""
 
-from typing import Any, Dict
+from typing import Any
 import proto
 import logging
 from google.ads.googleads.client import GoogleAdsClient
-from google.protobuf.json_format import MessageToDict
 from google.ads.googleads.v21.services.services.google_ads_service import (
     GoogleAdsServiceClient,
 )
 
 from google.ads.googleads.util import get_nested_attr
 import google.auth
+from mcp_header_interceptor import MCPHeaderInterceptor
 import os
 
 GAQL_FILEPATH = "ads_mcp/gaql_resources.txt"
@@ -54,7 +54,7 @@ def _get_developer_token() -> str:
     return dev_token
 
 
-def get_googleads_client() -> GoogleAdsClient:
+def _get_googleads_client() -> GoogleAdsClient:
     # Use this line if you have a google-ads.yaml file
     # client = GoogleAdsClient.load_from_storage()
     client = GoogleAdsClient(
@@ -62,11 +62,20 @@ def get_googleads_client() -> GoogleAdsClient:
         developer_token=_get_developer_token(),
     )
 
-    # add somethink to headers to record and add support for MCP efforts
     return client
 
 
-googleads_client = get_googleads_client()
+_googleads_client = _get_googleads_client()
+
+
+def get_googleads_service(serviceName: str) -> GoogleAdsServiceClient:
+    return _googleads_client.get_service(
+        serviceName, interceptors=[MCPHeaderInterceptor()]
+    )
+
+
+def get_googleads_type(typeName: str):
+    return _googleads_client.get_type(typeName)
 
 
 def format_output_value(value: Any) -> Any:

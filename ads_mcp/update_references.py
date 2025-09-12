@@ -1,10 +1,10 @@
-# Copyright 2025 Google LLC
+# Copyright 2025 Google LLC.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     https://www.apache.org/licenses/LICENSE-2.0
+#      http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,83 +14,77 @@
 
 """Tools for generating file containing a list of resources and their fields."""
 
-import utils, json, sys
-from google.ads.googleads.v21.services.types.google_ads_field_service import (
-    SearchGoogleAdsFieldsRequest,
-    SearchGoogleAdsFieldsResponse,
-)
-
-from google.ads.googleads.v21.resources.types.google_ads_field import (
-    GoogleAdsField,
-)
-
-
-def get_data_for_resource(resource_name):
-    """For a given resource_name, return selectable, filterable and sortable fields"""
-    ga_service = utils.googleads_client.get_service("GoogleAdsFieldService")
-
-    request: SearchGoogleAdsFieldsRequest = utils.googleads_client.get_type(
-        "SearchGoogleAdsFieldsRequest"
-    )
-
-    query = f"SELECT name, selectable, filterable, sortable WHERE name like '{resource_name}.%'"
-
-    request.query = query
-
-    response: SearchGoogleAdsFieldsResponse = (
-        ga_service.search_google_ads_fields(request=request)
-    )
-
-    if response.total_results_count == 0:
-        raise ValueError(
-            "No GoogleAdsFields found with a name that begins with "
-            f"'{resource_name}'."
-        )
-
-    selectable: list = []
-    filterable: list = []
-    sortable: list = []
-
-    googleads_field: GoogleAdsField
-    for googleads_field in response:
-        if googleads_field.selectable:
-            selectable.append(googleads_field.name)
-        if googleads_field.filterable:
-            filterable.append(googleads_field.name)
-        if googleads_field.sortable:
-            sortable.append(googleads_field.name)
-        # todo if googleads_field.selectable_with:
-
-    output = f"""{{'resource:': '{resource_name}', 'selectable': ['{ "','".join(selectable) }'], 'filterable': ['{ "','".join(filterable) }'], 'sortable': ['{ "','".join(sortable) }']}},"""
-
-    return output
+import utils
+import json
+import collections
 
 
 def update_gaql_resource_file():
-    """Find all resources, geneate field data for each and save to a file"""
-    ga_service = utils.googleads_client.get_service("GoogleAdsFieldService")
+    """Fetches all Google Ads fields and their attributes, groups them by resource, and saves to a JSON file."""
 
-    request: SearchGoogleAdsFieldsRequest = utils.googleads_client.get_type(
-        "SearchGoogleAdsFieldsRequest"
-    )
+    ga_service = utils.get_googleads_service("GoogleAdsFieldService")
 
-    query = f"SELECT name WHERE category = 'RESOURCE'"
+    request = utils.get_googleads_type("SearchGoogleAdsFieldsRequest")
 
+    # Query to select the name and key attributes for ALL fields.
+    # We no longer filter by category = 'RESOURCE' here, as we need attributes
+    # for all fields associated with resources.
+    query = "SELECT name, selectable, filterable, sortable"
     request.query = query
 
-    response: SearchGoogleAdsFieldsResponse = (
-        ga_service.search_google_ads_fields(request=request)
-    )
+    try:
+        response = ga_service.search_google_ads_fields(request=request)
+    except Exception as e:
+        raise RuntimeError(f"API call to search_google_ads_fields failed: {e}")
 
     if response.total_results_count == 0:
-        raise ValueError("No resources found")
+        print("No GoogleAdsFields found.")
+        return
 
-    with open(utils.GAQL_FILEPATH, "w") as file:
-        for googleads_field in response:
-            json.dump(
-                get_data_for_resource(googleads_field.name), file, indent=4
-            )
-            file.write("\n")
+    # Dictionary to store the grouped results
+    # Example: {'campaign': {'selectable': [], 'filterable': [], 'sortable': []}, ...}
+    resource_data = collections.defaultdict(
+        lambda: {"selectable": [], "filterable": [], "sortable": []}
+    )
+
+    for googleads_field in response:
+        field_name = googleads_field.name
+        # Extract the base resource name (e.g., 'campaign' from 'campaign.id')
+        if "." in field_name:
+            resource_name = field_name.split(".")[0]
+
+            if googleads_field.selectable:
+                resource_data[resource_name]["selectable"].append(field_name)
+            if googleads_field.filterable:
+                resource_data[resource_name]["filterable"].append(field_name)
+            if googleads_field.sortable:
+                resource_data[resource_name]["sortable"].append(field_name)
+        # We can ignore fields that don't contain a '.' as they are likely
+        # top-level resources themselves and don't have these attributes in the same way.
+
+    # Prepare the final output structure
+    output_list = []
+    for resource, attributes in resource_data.items():
+        output_list.append(
+            {
+                "resource": resource,
+                "selectable": sorted(attributes["selectable"]),
+                "filterable": sorted(attributes["filterable"]),
+                "sortable": sorted(attributes["sortable"]),
+            }
+        )
+
+    # Sort the list of resources for consistent output
+    output_list.sort(key=lambda x: x["resource"])
+
+    try:
+        with open(utils.GAQL_FILEPATH, "w") as file:
+            json.dump(output_list, file, indent=4)
+        print(f"Successfully updated resource file: {utils.GAQL_FILEPATH}")
+    except IOError as e:
+        raise RuntimeError(
+            f"Failed to write to file {utils.GAQL_FILEPATH}: {e}"
+        )
 
 
 if __name__ == "__main__":
