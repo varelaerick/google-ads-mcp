@@ -4,8 +4,6 @@ This repo contains the source code for running a local
 [MCP](https://modelcontextprotocol.io) server that interacts with the
 [Google Ads API](https://developers.google.com/google-ads/api).
 
-
-
 ## Tools
 
 The server uses the
@@ -18,6 +16,12 @@ to provide several
 - `search`: Retrieves information about the Google Ads account.
 - `list_accessible_customers`: Returns names of customers directly accessible
   by the user authenticating the call.
+
+## Notes
+
+1.  The MCP Server will expose your data to the Agent or LLM that you connect to it.
+1.  If you have technical isses, please use the [GitHub issue tracker](https://github.com/googleads/google-ads-mcp/issues).
+1.  To help us collect usage data, you will notice an extra header has been added to your API calls, this data is used to improve the product.
 
 ## Setup instructions
 
@@ -128,8 +132,11 @@ In the utils.py file, change get_googleads_client() to use the load_from_storage
     {
       "mcpServers": {
         "google-ads-mcp": {
-          "command": "python",
+          "command": "pipx",
           "args": [
+            "run",
+            "--spec",
+            "git+https://github.com/googleads/google-ads-mcp.git",
             "google-ads-mcp"
           ],
           "env": {
@@ -148,8 +155,11 @@ In the utils.py file, change get_googleads_client() to use the load_from_storage
     {
       "mcpServers": {
         "google-ads-mcp": {
-          "command": "python",
+          "command": "pipx",
           "args": [
+            "run",
+            "--spec",
+            "git+https://github.com/googleads/google-ads-mcp.git",
             "google-ads-mcp"
           ],
           "env": {
