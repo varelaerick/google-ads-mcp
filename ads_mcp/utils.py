@@ -26,7 +26,7 @@ from google.ads.googleads.v21.services.services.google_ads_service import (
 
 from google.ads.googleads.util import get_nested_attr
 import google.auth
-from mcp_header_interceptor import MCPHeaderInterceptor
+from ads_mcp.mcp_header_interceptor import MCPHeaderInterceptor
 import os
 
 GAQL_FILEPATH = "ads_mcp/gaql_resources.txt"
